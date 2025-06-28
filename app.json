@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "AccountSharingFront",
+    "slug": "accountsharingfront",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "platforms": ["ios", "android", "web"],
+    "sdkVersion": "53.0.0",
+    "entryPoint": "./App.js",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
