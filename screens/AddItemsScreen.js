@@ -21,113 +21,55 @@ export default function AddItemsScreen({ route, navigation }) {
   const apiKey = '2rqKmKZfOihs863X+zoLHQ==gl1pnJH4omROsJmT';
 
   const pickImage = async () => {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: [ImagePicker.MediaType.Images],
-    allowsEditing: false,
-    quality: 1,
-    base64: false,
-  });
-
-  if (!result.canceled && result.assets && result.assets.length > 0) {
-    const imageUri = result.assets[0].uri;
-    setReceiptImage(imageUri);
-
-    const filename = imageUri.split('/').pop();
-    const match = /\.(\w+)$/.exec(filename ?? '');
-    const type = match ? `image/${match[1]}` : `image`;
-
-    const formData = new FormData();
-    formData.append('image', {
-      uri: imageUri,
-      name: filename,
-      type,
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 1,
+      base64: false,
     });
 
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const imageUri = result.assets[0].uri;
+      setReceiptImage(imageUri);
+      await extractItemsFromImage(imageUri);
+    }
+  };
+
+  const extractItemsFromImage = async (uri) => {
     try {
-      const res = await fetch('http://192.168.1.21:5000/scan-receipt', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
       });
 
-      const data = await res.json();
-      if (data.items && Array.isArray(data.items)) {
-        setItems(data.items); //save items from server
+      const response = await fetch('https://api.api-ninjas.com/v1/imagetotext', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': apiKey,
+        },
+        body: JSON.stringify({
+          image: base64.replace(/^data:image\/[a-z]+;base64,/, '')
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && Array.isArray(data)) {
+        const lines = data.map(line => line.text.trim()).filter(Boolean);
+        if (lines.length > 0) {
+          setItems(lines);
+        } else {
+          alert('No items found in receipt.');
+        }
       } else {
-        alert('No items found in receipt.');
+        console.error(data);
+        alert(data.error || 'Failed to extract text from image.');
       }
     } catch (err) {
       console.error(err);
-      alert('Failed to scan receipt. Please try again.');
+      alert('Failed to process image.');
     }
-  }
-};
-
-const uploadImageToServer = async (imageUri) => {
-  const formData = new FormData();
-  formData.append('image', {
-    uri: imageUri,
-    name: 'receipt.jpg',
-    type: 'image/jpeg',
-  });
-
-  try {
-    const response = await fetch('http://192.168.1.21:5000/scan-receipt', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      body: formData,
-    });
-
-    const result = await response.json();
-    if (response.ok) {
-      setItems(result.items); // show items recognized
-    } else {
-      alert('Error: ' + result.error);
-    }
-  } catch (err) {
-    console.error('Upload error:', err);
-    alert('Something went wrong');
-  }
-};
-
-
-
-
-const extractItemsFromImage = async (uri) => {
-  try {
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    const response = await fetch('https://api.api-ninjas.com/v1/imagetotext', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': '2rqKmKZfOihs863X+zoLHQ==gl1pnJH4omROsJmT', // שימי את המפתח שלך
-      },
-      body: JSON.stringify({
-        image: base64.replace(/^data:image\/[a-z]+;base64,/, '')
-      }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok && Array.isArray(data)) {
-      const lines = data.map(line => line.text.trim()).filter(Boolean);
-      setItems(lines);
-    } else {
-      console.error(data);
-      alert(data.error || 'Failed to extract text from image.');
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Failed to process image.');
-  }
-};
+  };
 
   const toggleItemForParticipant = (participant, item) => {
     setSelectedItems((prev) => {

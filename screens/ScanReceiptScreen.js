@@ -1,9 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Button, Image, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  Button,
+  Image,
+  ActivityIndicator,
+  StyleSheet,
+  ScrollView
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
-
-const API_KEY = '2rqKmKZfOihs863X+zoLHQ==gl1pnJH4omROsJmT';
+import { API_BASE } from '../apiConfig';
 
 export default function ScanReceiptScreen() {
   const [imageUri, setImageUri] = useState(null);
@@ -12,38 +18,44 @@ export default function ScanReceiptScreen() {
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.IMAGE,
+      mediaTypes: ImagePicker.MediaType.Images,
       quality: 1,
-      base64: true,
+      base64: false,
     });
 
-    if (!result.cancelled) {
-      setImageUri(result.assets[0].uri);
-      sendToApi(result.assets[0]);
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const image = result.assets[0];
+      setImageUri(image.uri);
+      await sendToApi(image.uri);
     }
   };
 
-  const sendToApi = async (image) => {
+  const sendToApi = async (uri) => {
     try {
       setLoading(true);
+
       const formData = new FormData();
       formData.append('image', {
-        uri: image.uri,
+        uri,
         name: 'receipt.jpg',
         type: 'image/jpeg',
       });
 
-      const response = await axios.post('https://api.api-ninjas.com/v1/imagetotext', formData, {
-        headers: {
-          'X-Api-Key': API_KEY,
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await fetch(`${API_BASE}/scan-receipt`, {
+        method: 'POST',
+        body: formData,
       });
 
-      const texts = response.data.map(block => block.text).join('\n');
-      setExtractedText(texts);
+      const data = await response.json();
+
+      if (response.ok && data.items && Array.isArray(data.items)) {
+        const text = data.items.join('\n');
+        setExtractedText(text);
+      } else {
+        setExtractedText(data.error || 'Unexpected response.');
+      }
     } catch (error) {
-      console.error('API error:', error);
+      console.error('Fetch error:', error);
       setExtractedText('Failed to extract text.');
     } finally {
       setLoading(false);
