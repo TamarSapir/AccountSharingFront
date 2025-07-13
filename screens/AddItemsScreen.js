@@ -54,7 +54,7 @@ export default function AddItemsScreen({ route, navigation }) {
 
       const data = await res.json();
       if (data.items && Array.isArray(data.items)) {
-        setItems(data.items); // שומר את הפריטים שהתקבלו מהשרת
+        setItems(data.items); //save items from server
       } else {
         alert('No items found in receipt.');
       }
@@ -84,7 +84,7 @@ const uploadImageToServer = async (imageUri) => {
 
     const result = await response.json();
     if (response.ok) {
-      setItems(result.items); // הצגת הפריטים שזוהו
+      setItems(result.items); // show items recognized
     } else {
       alert('Error: ' + result.error);
     }

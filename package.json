@@ -19,11 +19,13 @@
   "description": "",
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
+    "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/native": "6.1.6",
     "@react-navigation/native-stack": "6.9.12",
     "axios": "^1.10.0",
     "expo": "^53.0.13",
     "expo-image-picker": "^16.1.4",
+    "firebase": "^9.23.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-native": "^0.79.4",

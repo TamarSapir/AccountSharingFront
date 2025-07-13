@@ -9,6 +9,11 @@ import {
 import axios from 'axios';
 import styles from './AuthScreenStyle';
 import { API_BASE } from '../apiConfig';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
+import { auth } from '../firebaseConfig';
 
 export default function AuthScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -21,6 +26,7 @@ export default function AuthScreen({ navigation }) {
   const handleAuth = async () => {
     const newErrors = {};
 
+    // Validate fields depending on the mode
     if (isRegistering) {
       if (!username) newErrors.username = 'Username is required';
       if (!email) newErrors.email = 'Email is required';
@@ -41,10 +47,26 @@ export default function AuthScreen({ navigation }) {
     const payload = isRegistering ? { username, email, password } : { email, password };
 
     try {
-    const res = await axios.post(`${API_BASE}/${endpoint}`, payload);
+      // Step 1: Authenticate with Firebase
+      if (isRegistering) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+
+      // Step 2: Send user data to your backend
+      const res = await axios.post(`${API_BASE}/${endpoint}`, payload);
+      console.log('Server response:', res.data);
+
+      // Navigate to home screen after successful login
       navigation.navigate('HomeScreen');
     } catch (err) {
-      setErrors({ general: err.response?.data?.error || 'Something went wrong' });
+      console.error('Authentication error:', err.message);
+      const errorMessage =
+        typeof err.response?.data?.error === 'string'
+          ? err.response.data.error
+          : err.message || 'Something went wrong';
+      setErrors({ general: errorMessage });
     }
   };
 
@@ -63,7 +85,7 @@ export default function AuthScreen({ navigation }) {
           {isRegistering && (
             <>
               <TextInput
-                placeholder="User Name"
+                placeholder="Username"
                 placeholderTextColor="#999"
                 style={styles.input}
                 value={username}
@@ -108,7 +130,9 @@ export default function AuthScreen({ navigation }) {
             </>
           )}
 
-          {errors.general && <Text style={{ color: 'red', textAlign: 'center' }}>{errors.general}</Text>}
+          {errors.general && (
+            <Text style={{ color: 'red', textAlign: 'center' }}>{errors.general}</Text>
+          )}
 
           <TouchableOpacity style={styles.button} onPress={handleAuth}>
             <Text style={styles.buttonText}>
@@ -116,7 +140,12 @@ export default function AuthScreen({ navigation }) {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => { setIsRegistering(!isRegistering); setErrors({}); }}>
+          <TouchableOpacity
+            onPress={() => {
+              setIsRegistering(!isRegistering);
+              setErrors({});
+            }}
+          >
             <Text style={styles.toggleText}>
               {isRegistering ? 'Already have an account? ' : "Don't have an account? "}
               <Text style={styles.linkText}>{isRegistering ? 'Login' : 'Sign Up'}</Text>

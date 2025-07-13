@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,41 @@ import {
   StyleSheet,
   ImageBackground,
 } from 'react-native';
+import { getAuth } from 'firebase/auth';
+import axios from 'axios';
+import { API_BASE } from '../apiConfig';
 
 export default function CreateBillScreen({ navigation }) {
   const [billName, setBillName] = useState('');
   const [participant, setParticipant] = useState('');
   const [participants, setParticipants] = useState([]);
+  const [userEmail, setUserEmail] = useState('');
+
+ useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const auth = getAuth();
+      const user = auth.currentUser;
+
+      if (!user) {
+        console.warn('No user is logged in');
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const res = await axios.get(`${API_BASE}/user-profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setUserEmail(res.data.email);
+      console.log('Logged in as:', res.data.email);
+    } catch (err) {
+      console.error('Error fetching user profile:', err.message);
+    }
+  };
+
+  fetchUser();
+}, []);
 
   const addParticipant = () => {
     if (participant.trim()) {
@@ -39,12 +69,18 @@ export default function CreateBillScreen({ navigation }) {
 
   return (
     <ImageBackground
-      source={require('../assets/images/background.png')} // ← שים כאן תמונה יפה בתיקייה assets/images
+      source={require('../assets/images/background.png')}
       style={styles.background}
       resizeMode="cover"
     >
       <View style={styles.overlay}>
         <Text style={styles.title}>Create New Bill</Text>
+
+        {userEmail && (
+          <Text style={{ color: '#555', textAlign: 'center', marginBottom: 10 }}>
+            Logged in as: {userEmail}
+          </Text>
+        )}
 
         <TextInput
           style={styles.input}
